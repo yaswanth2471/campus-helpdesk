@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Campus Help Desk</title>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#eef1f4;--card:#fff;--ink:#1b2430;--mut:#5d6b7a;--line:#d6dde4;--teal:#0f5c63;--tealbg:#dcefef;--amb:#b7791f;--ambbg:#fbf0d9;--red:#b83232;--redbg:#f9e0e0;--grn:#2b7a4b;--grnbg:#dff1e6}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a21;--card:#1d252e;--ink:#e6ebf0;--mut:#93a1b0;--line:#33404d;--teal:#5cc0c8;--tealbg:#17383b;--amb:#e5b25a;--ambbg:#3a2e14;--red:#ef7b7b;--redbg:#3d1f1f;--grn:#6fcf95;--grnbg:#173323}}
+:root[data-theme="dark"]{--bg:#141a21;--card:#1d252e;--ink:#e6ebf0;--mut:#93a1b0;--line:#33404d;--teal:#5cc0c8;--tealbg:#17383b;--amb:#e5b25a;--ambbg:#3a2e14;--red:#ef7b7b;--redbg:#3d1f1f;--grn:#6fcf95;--grnbg:#173323}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*:before,*:after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Public Sans",system-ui,-apple-system,Segoe UI,sans-serif}
+header{background:var(--card);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+h1{font-size:18px;margin:0}h2{font-size:16px;margin:0 0 8px}h3{font-size:14px;margin:14px 0 6px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,input,textarea,button{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+button{cursor:pointer;font-weight:600}button:hover{border-color:var(--teal)}
+button.p{background:var(--teal);color:var(--card);border-color:var(--teal)}
+button.d{color:var(--red)}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+main{max-width:1100px;margin:0 auto;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:16px}
+@media(max-width:800px){main{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tabs button{border-radius:20px;padding:3px 12px;font-weight:400}.tabs button.on{background:var(--tealbg);border-color:var(--teal);font-weight:700}
+.row{border:1px solid var(--line);border-left-width:5px;border-radius:6px;padding:8px 10px;margin-bottom:8px;cursor:pointer}
+.row.sel{background:var(--tealbg)}.row.late{border-left-color:var(--red)}.row.ok{border-left-color:var(--grn)}.row.wait{border-left-color:var(--amb)}
+.row b{display:block}.sub{color:var(--mut);font-size:13px}
+.tag{display:inline-block;font-size:12px;font-weight:600;padding:1px 8px;border-radius:10px;background:var(--tealbg);color:var(--teal);margin-right:4px}
+.tag.r{background:var(--redbg);color:var(--red)}.tag.a{background:var(--ambbg);color:var(--amb)}.tag.g{background:var(--grnbg);color:var(--grn)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:8px}
+.kpi{border:1px solid var(--line);border-radius:6px;padding:8px}.kpi span{display:block;font-size:24px;font-weight:700}
+.meter{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:3px 0 8px}.meter i{display:block;height:100%;background:var(--teal)}
+.log{border-left:2px solid var(--line);margin:0 0 0 6px;padding:0 0 0 12px;list-style:none}.log li{margin-bottom:8px;position:relative}
+.log li:before{content:"";position:absolute;left:-17px;top:7px;width:8px;height:8px;border-radius:50%;background:var(--teal)}
+.log li.int{background:var(--ambbg);padding:2px 6px;border-radius:4px}
+.acts{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.empty{color:var(--mut);padding:18px 4px}
+.wide{overflow-x:auto}
+textarea,input[type=text]{width:100%}
+label{font-size:13px;color:var(--mut)}
+</style></head><body>
+<header><div><h1>Campus Help Desk</h1><span class="sub" id="clock"></span></div>
+<div class="bar"><label>Signed in as <select id="who" onchange="setMe(this.value)"></select></label>
+<span class="bar" title="Demo controls: move the clock to test SLA, escalation and auto-close"><button onclick="adv(1)">+1 hour</button><button onclick="adv(24)">+1 day</button><button onclick="adv(72)">+3 days</button><button class="d" onclick="resetAll()">Reset demo</button></span></div></header>
+<main><section class="panel" id="left"></section><section class="panel" id="right"></section></main>
+<script>
+const H=36e5,D=24*H,SLA={Urgent:8,High:24,Medium:48,Low:96},PRI=['Low','Medium','High','Urgent'];
+const CATS={Fees:'Medium',Attendance:'Medium','ID card':'Low',Documents:'Medium',Certificates:'Low',Other:'Low'};
+const USERS=[
+{id:'s1',name:'Ravi (student)',role:'student'},{id:'s2',name:'Meera (student)',role:'student'},
+{id:'f1',name:'Anita (staff: fees, attendance)',role:'staff',skills:['Fees','Attendance','Other']},
+{id:'f2',name:'Kiran (staff: documents, ID, certificates)',role:'staff',skills:['Documents','ID card','Certificates','Other']},
+{id:'f3',name:'Suresh (staff: fees, ID, documents)',role:'staff',skills:['Fees','ID card','Documents','Other']},
+{id:'m1',name:'Dr. Rao (manager)',role:'manager'}];
+const U=id=>USERS.find(u=>u.id===id)||{name:'System'},short=n=>n.split(' (')[0];
+const ST=['Open','In progress','Waiting for student','Resolved','Closed'];
+let S,view={tab:'mine',sel:null,page:'list'};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const now=()=>Date.now()+S.off;
+function seed(){
+ S={off:0,me:'s1',seq:100,leave:{},t:[]};
+ const n=Date.now();
+ mk('s1','Fee receipt not generated after payment','Fees','Paid on 2 Sept via UPI, no receipt in portal.',false,n-3*D);
+ mk('s2','Attendance wrongly marked absent on 12 Sept','Attendance','I attended the lab but am marked absent.',false,n-30*H);
+ mk('s1','Lost ID card, need replacement','ID card','Lost it in the bus.',false,n-5*H);
+ mk('s2','Bonafide certificate for scholarship','Certificates','Need it before the scholarship deadline.',true,n-8*H);
+ const w=S.t[1];w.status='Waiting for student';w.pausedAt=n-2*H;log(w,'f1','Asked student for lab timetable screenshot');
+ run();save();
+}
+function log(t,by,text,internal){t.log.push({at:now(),by,text,internal:!!internal})}
+function activeCount(id){return S.t.filter(t=>t.owner===id&&['Open','In progress','Waiting for student'].includes(t.status)).length}
+function pick(cat,skip){
+ const c=USERS.filter(u=>u.role==='staff'&&u.skills.includes(cat)&&!S.leave[u.id]&&u.id!==skip).sort((a,b)=>activeCount(a.id)-activeCount(b.id));
+ return c[0]?c[0].id:'m1';
+}
+function mk(by,title,cat,desc,urgent,at){
+ at=at||now();const o=pick(cat);let p=CATS[cat];if(urgent)p=PRI[Math.min(3,PRI.indexOf(p)+1)];
+ const t={id:'T-'+(++S.seq),by,title,cat,pri:p,status:'Open',owner:o,created:at,due:at+SLA[p]*H,esc:false,reopen:0,log:[]};
+ t.log.push({at,by,text:'Ticket raised'+(urgent?' (blocks a deadline, priority raised)':'')});
+ t.log.push({at,by:'sys',text:'Assigned to '+short(U(o).name)+(o==='m1'?' (no available specialist)':' (lowest workload in '+cat+')')});
+ S.t.unshift(t);return t;
+}
+// Rules engine: SLA breach, escalation, auto-close, leave reassignment
+function run(){
+ const n=now();
+ S.t.forEach(t=>{
+  const act=t.status==='Open'||t.status==='In progress';
+  if(act&&S.leave[t.owner]){const o=pick(t.cat,t.owner);log(t,'sys','Owner on leave, reassigned to '+short(U(o).name));t.owner=o}
+  if(act&&!t.esc&&n>t.due){t.esc=true;const p=PRI[Math.min(3,PRI.indexOf(t.pri)+1)];log(t,'sys','SLA breached. Escalated to manager'+(p!==t.pri?', priority raised to '+p:''));t.pri=p}
+  if(t.status==='Waiting for student'&&n-t.pausedAt>7*D){t.status='Closed';t.closed=n;log(t,'sys','Auto-closed: no reply from student in 7 days')}
+  if(t.status==='Resolved'&&n-t.resolved>3*D){t.status='Closed';t.closed=n;log(t,'sys','Auto-closed 3 days after resolution')}
+ });
+}
+function save(){try{localStorage.setItem('helpdesk5',JSON.stringify(S))}catch(e){}}
+function load(){try{const r=localStorage.getItem('helpdesk5');if(r){S=JSON.parse(r);return true}}catch(e){}return false}
+function upd(){run();save();render()}
+function adv(h){S.off+=h*H;upd()}
+function resetAll(){if(confirm('Reset all demo data?')){seed();view={tab:'mine',sel:null,page:'list'};render()}}
+function setMe(id){S.me=id;view={tab:U(id).role==='student'?'mine':'mine',sel:null,page:'list'};save();render()}
+function fmt(ms){const a=Math.abs(ms);return a>=D?Math.floor(a/D)+'d '+Math.floor(a%D/H)+'h':Math.max(1,Math.floor(a/H))+'h'}
+function dueInfo(t){
+ if(t.status==='Waiting for student')return{txt:'SLA paused while waiting',cls:'a'};
+ if(t.status==='Resolved'||t.status==='Closed')return{txt:'Done',cls:'g'};
+ const d=t.due-now();return d<0?{txt:'Overdue by '+fmt(d),cls:'r'}:{txt:'Due in '+fmt(d),cls:d<6*H?'a':''};
+}
+// ---- Actions ----
+function chg(id,fn){const t=S.t.find(x=>x.id===id);fn(t);upd()}
+function setStatus(id,st,note){chg(id,t=>{
+ const from=t.status,n=now();
+ if(from==='Waiting for student'&&st!=='Waiting for student')t.due+=n-t.pausedAt;
+ if(st==='Waiting for student')t.pausedAt=n;
+ if(st==='Resolved')t.resolved=n;if(st==='Closed')t.closed=n;
+ t.status=st;log(t,S.me,from+' → '+st+(note?': '+note:''))})}
+function askStudent(id){const m=prompt('What do you need from the student?');if(m)chg(id,t=>{t.due+=0;t.pausedAt=now();t.status='Waiting for student';log(t,S.me,'Waiting for student: '+m)})}
+function resolve(id){const m=prompt('Resolution note (visible to student):');if(m)setStatus(id,'Resolved',m)}
+function comment(id){const v=document.getElementById('cm').value.trim();if(!v)return;const i=document.getElementById('int');const internal=i&&i.checked;
+ chg(id,t=>{log(t,S.me,v,internal);if(U(S.me).role==='student'&&t.status==='Waiting for student'){t.due+=now()-t.pausedAt;t.status='In progress';log(t,'sys','Student replied, back to In progress, SLA resumed')}})}
+function reopen(id){const m=prompt('Why are you reopening this?');if(m)chg(id,t=>{t.reopen++;t.status='Open';t.esc=false;t.due=now()+SLA[t.pri]*H;log(t,S.me,'Reopened: '+m)})}
+function reassign(id,to){if(!to)return;chg(id,t=>{log(t,S.me,'Reassigned '+short(U(t.owner).name)+' → '+short(U(to).name));t.owner=to})}
+function setPri(id,p){chg(id,t=>{log(t,S.me,'Priority '+t.pri+' → '+p+' (SLA recalculated from creation)');t.pri=p;t.due=t.created+SLA[p]*H})}
+function toggleLeave(id){S.leave[id]=!S.leave[id];upd()}
+function submitNew(){
+ const ti=document.getElementById('nt').value.trim(),ds=document.getElementById('nd').value.trim();
+ if(!ti){document.getElementById('err').textContent='Add a short title so staff can see what you need.';return}
+ const t=mk(S.me,ti,document.getElementById('nc').value,ds,document.getElementById('nu').checked);
+ if(ds)log(t,S.me,ds);view={tab:'mine',sel:t.id,page:'list'};upd();
+}
+// ---- Views ----
+function visible(){
+ const me=U(S.me),n=now();let l=S.t;
+ if(me.role==='student')return l.filter(t=>t.by===S.me);
+ if(view.tab==='mine'&&me.role==='staff')l=l.filter(t=>t.owner===S.me);
+ if(view.tab==='late')l=l.filter(t=>(t.status==='Open'||t.status==='In progress')&&n>t.due);
+ if(view.tab==='esc')l=l.filter(t=>t.esc&&t.status!=='Closed');
+ if(view.tab==='wait')l=l.filter(t=>t.status==='Waiting for student');
+ if(view.tab==='done')l=l.filter(t=>t.status==='Resolved'||t.status==='Closed');
+ return l;
+}
+function render(){
+ document.getElementById('clock').textContent='Demo time: '+new Date(now()).toLocaleString();
+ const w=document.getElementById('who');w.innerHTML=USERS.map(u=>`<option value="${u.id}" ${u.id===S.me?'selected':''}>${esc(u.name)}</option>`).join('');
+ const me=U(S.me);let tabs=[];
+ if(me.role==='student')tabs=[['mine','My requests']];
+ else{if(me.role==='staff')tabs.push(['mine','Assigned to me']);tabs.push(['all','All'],['late','Overdue'],['esc','Escalated'],['wait','Waiting on student'],['done','Resolved/closed'])}
+ let h='<div class="tabs">'+tabs.map(([k,l])=>`<button class="${view.tab===k&&view.page==='list'?'on':''}" onclick="view.tab='${k}';view.page='list';render()">${l}</button>`).join('');
+ if(me.role==='student')h+=`<button class="p" onclick="view.page='new';render()">+ New request</button>`;
+ if(me.role==='manager')h+=`<button class="${view.page==='dash'?'on':''}" onclick="view.page='dash';render()">Dashboard</button>`;
+ h+='</div>';
+ if(me.role==='staff')h+=`<label><input type="checkbox" ${S.leave[S.me]?'checked':''} onchange="toggleLeave('${S.me}')"> I am on leave (my open tickets move to a colleague)</label><br><br>`;
+ const l=visible();
+ h+=l.length?l.map(row).join(''):`<div class="empty">${me.role==='student'?'No requests yet. Choose “New request” to raise one.':'Nothing here right now.'}</div>`;
+ document.getElementById('left').innerHTML=h;
+ document.getElementById('right').innerHTML=view.page==='new'?newForm():view.page==='dash'?dash():detail();
+}
+function row(t){const d=dueInfo(t);const c=t.status==='Waiting for student'?'wait':(t.status==='Resolved'||t.status==='Closed')?'ok':d.cls==='r'?'late':'';
+ return `<div class="row ${c} ${view.sel===t.id?'sel':''}" onclick="view.sel='${t.id}';view.page='list';render()"><b>${esc(t.title)}</b>
+ <span class="tag">${t.id}</span><span class="tag ${t.pri==='Urgent'||t.pri==='High'?'r':''}">${t.pri}</span><span class="tag ${d.cls}">${d.txt}</span>${t.esc?'<span class="tag r">Escalated</span>':''}
+ <div class="sub">${t.status} · ${esc(t.cat)} · Owner: ${esc(short(U(t.owner).name))}</div></div>`}
+function newForm(){return `<h2>New request</h2><label>Category</label><br><select id="nc">${Object.keys(CATS).map(c=>`<option>${c}</option>`).join('')}</select><br><br>
+<label>Title</label><input type="text" id="nt" maxlength="90"><br><br><label>Details</label><textarea id="nd" rows="4"></textarea>
+<p><label><input type="checkbox" id="nu"> This blocks an exam, admission or scholarship deadline</label></p><p id="err" style="color:var(--red)"></p>
+<button class="p" onclick="submitNew()">Submit request</button>`}
+function detail(){
+ const t=S.t.find(x=>x.id===view.sel&&visible().some(v=>v.id===x.id));
+ if(!t)return '<div class="empty">Select a ticket to see its status, owner, and history.</div>';
+ const me=U(S.me),st=me.role!=='student',d=dueInfo(t),mine=t.owner===S.me||me.role==='manager';
+ let a='';
+ if(st&&mine){
+  if(t.status==='Open')a+=`<button class="p" onclick="setStatus('${t.id}','In progress')">Start work</button>`;
+  if(t.status==='In progress'){a+=`<button onclick="askStudent('${t.id}')">Ask student for info</button><button class="p" onclick="resolve('${t.id}')">Mark resolved</button>`}
+  if(t.status==='Waiting for student')a+=`<button onclick="setStatus('${t.id}','In progress','Info received offline')">Resume</button>`;
+  if(t.status==='Resolved')a+=`<button onclick="setStatus('${t.id}','Closed')">Close ticket</button>`;
+ }
+ const canReopen=(t.status==='Resolved'||t.status==='Closed')&&(now()-(t.resolved||t.closed))<7*D;
+ if(canReopen&&(t.by===S.me||st))a+=`<button onclick="reopen('${t.id}')">Reopen</button>`;
+ if((t.status==='Resolved'||t.status==='Closed')&&!canReopen&&!st)a+='<span class="sub">Reopen window (7 days) has passed. Please raise a new request.</span>';
+ let ctl='';
+ if(st&&t.status!=='Closed'){
+  const others=USERS.filter(u=>u.role!=='student'&&u.id!==t.owner&&!S.leave[u.id]&&(u.role==='manager'||u.skills.includes(t.cat)));
+  ctl=`<h3>Ownership and priority</h3><div class="bar"><select onchange="reassign('${t.id}',this.value)"><option value="">Reassign to…</option>${others.map(u=>`<option value="${u.id}">${esc(short(u.name))}</option>`).join('')}</select>
+  <select onchange="setPri('${t.id}',this.value)">${PRI.map(p=>`<option ${p===t.pri?'selected':''}>${p}</option>`).join('')}</select></div>`}
+ const logs=t.log.filter(x=>!x.internal||st).map(x=>`<li class="${x.internal?'int':''}"><b>${x.by==='sys'?'System':esc(short(U(x.by).name))}</b>${x.internal?' <span class="tag a">Internal</span>':''}<div>${esc(x.text)}</div><span class="sub">${new Date(x.at).toLocaleString()}</span></li>`).join('');
+ const box=t.status!=='Closed'?`<h3>Add a comment</h3><textarea id="cm" rows="2"></textarea>${st?'<label><input type="checkbox" id="int"> Internal note (student cannot see)</label> ':''}<button onclick="comment('${t.id}')">${t.status==='Waiting for student'&&!st?'Send reply':'Post comment'}</button>`:'';
+ return `<h2>${esc(t.title)}</h2><span class="tag">${t.id}</span><span class="tag">${t.status}</span><span class="tag ${t.pri==='High'||t.pri==='Urgent'?'r':''}">${t.pri}</span><span class="tag ${d.cls}">${d.txt}</span>${t.esc?'<span class="tag r">Escalated</span>':''}
+ <p class="sub">${esc(t.cat)} · Raised by ${esc(short(U(t.by).name))} · Owner ${esc(short(U(t.owner).name))} · Age ${fmt(now()-t.created)}${t.reopen?' · Reopened '+t.reopen+'×':''}</p>
+ ${t.status==='Waiting for student'&&!st?'<div class="tag a" style="display:block;padding:6px 10px">Staff need a reply from you. The request closes automatically if there is no reply in 7 days.</div>':''}
+ <div class="acts">${a}</div>${ctl}<h3>History</h3><ul class="log">${logs}</ul>${box}`;
+}
+function dash(){
+ const n=now(),T=S.t,act=T.filter(t=>t.status==='Open'||t.status==='In progress'),late=act.filter(t=>n>t.due);
+ const done=T.filter(t=>t.resolved),avg=done.length?fmt(done.reduce((s,t)=>s+t.resolved-t.created,0)/done.length):'n/a';
+ const open=T.filter(t=>t.status!=='Closed'&&t.status!=='Resolved');
+ const bk=[['Under 1 day',0,D],['1 to 3 days',D,3*D],['3 to 7 days',3*D,7*D],['Over 7 days',7*D,1e15]].map(([l,a,b])=>[l,open.filter(t=>n-t.created>=a&&n-t.created<b).length]);
+ const staff=USERS.filter(u=>u.role==='staff'),mx=Math.max(1,...staff.map(u=>activeCount(u.id)));
+ const sla=T.length?Math.round(100*(T.length-T.filter(t=>t.esc).length)/T.length):100;
+ return `<h2>Management dashboard</h2><div class="grid"><div class="kpi">Open<span>${open.length}</span></div><div class="kpi">Overdue<span style="color:var(--red)">${late.length}</span></div><div class="kpi">Escalated<span>${T.filter(t=>t.esc&&t.status!=='Closed').length}</span></div><div class="kpi">Avg resolution<span>${avg}</span></div><div class="kpi">Within SLA<span>${sla}%</span></div></div>
+ <h3>Workload per staff member</h3>${staff.map(u=>{const c=activeCount(u.id),l=late.filter(t=>t.owner===u.id).length;return `<div>${esc(short(u.name))} ${S.leave[u.id]?'<span class="tag a">On leave</span>':''}<span class="sub"> ${c} active, ${l} overdue</span><div class="meter"><i style="width:${100*c/mx}%"></i></div></div>`}).join('')}
+ <h3>Ageing of open tickets</h3>${bk.map(([l,c])=>`<div class="sub">${l}: <b>${c}</b></div>`).join('')}
+ <h3>Tickets by category</h3>${Object.keys(CATS).map(c=>`<span class="tag">${c}: ${T.filter(t=>t.cat===c).length}</span>`).join('')}
+ <p class="sub">Tip: use the demo clock (+1 day, +3 days) to watch tickets breach SLA, escalate, and auto-close.</p>`;
+}
+if(!load())seed();run();render();
+</script></body></html>
